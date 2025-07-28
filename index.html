@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="vi">
   <head>
@@ -38,20 +39,1625 @@
         }
       }
     </script>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.11.0",
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "react": "https://esm.sh/react@^19.1.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+    <!-- Babel for JSX Transpilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Import Map for ES Modules -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "@google/genai": "https://esm.sh/@google/genai@0.14.0"
+      }
+    }
+    </script>
+  <link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-forest-bg text-forest-text font-sans">
     <div id="root"></div>
+
+    <!-- React Application Code -->
+    <script type="text/babel" data-type="module">
+      import React, { useState, useCallback, useEffect } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { GoogleGenAI, Type } from "@google/genai";
+
+      // ============== START: types.ts ==============
+      const GameState = {
+          START_SCREEN: "START_SCREEN",
+          PLAYING: "PLAYING",
+          GAME_OVER: "GAME_OVER",
+      };
+
+      const TimeOfDay = {
+          SANG: "Sáng",
+          TRUA: "Trưa",
+          CHIEU: "Chiều",
+          TOI: "Tối",
+      };
+
+      const Season = {
+          XUAN: "Xuân",
+          HA: "Hạ",
+          THU: "Thu",
+          DONG: "Đông",
+      };
+
+      const Location = {
+          RUNG: "Rừng",
+          KHU_TRONG: "Khu Đất Trống",
+          TRANG_TRAI: "Trang Trại",
+          TUP_LEU_AELIN: "Túp lều của Aelin",
+          BO_HO_YEN_A: "Bờ Hồ Yên Ả",
+          LO_REN_CUA_KAEL: "Lò Rèn của Kael",
+      };
+
+      const Weather = {
+          NANG_CHAN_HOA: "Nắng Chan Hòa",
+          MUA_PHUN: "Mưa Phùn",
+          SUONG_MU: "Sương Mù",
+      };
+
+      const NPCName = {
+          Aelin: "Aelin",
+          Kael: "Kael",
+          Elara: "Elara"
+      };
+
+      const ActionType = {
+          DEFAULT: "DEFAULT",
+          DISCOVER_CLEARING: "DISCOVER_CLEARING",
+          BUILD_FARMHOUSE: "BUILD_FARMHOUSE",
+          RETURN_HOME: "RETURN_HOME",
+          LEAVE_HOME: "LEAVE_HOME",
+          PLANT_SEED: "PLANT_SEED",
+          HARVEST_CROP: "HARVEST_CROP",
+          BEFRIEND_ANIMAL: "BEFRIEND_ANIMAL",
+          TEND_ANIMAL: "TEND_ANIMAL",
+          DISCOVER_AELIN_HUT: "DISCOVER_AELIN_HUT",
+          RETURN_TO_FOREST: "RETURN_TO_FOREST",
+          TALK_TO_AELIN: "TALK_TO_AELIN",
+          DISCOVER_LAKE: "DISCOVER_LAKE",
+          FISH: "FISH",
+          USE_FOREST_POWER: "USE_FOREST_POWER",
+          DISCOVER_KAEL: "DISCOVER_KAEL",
+          TALK_TO_KAEL: "TALK_TO_KAEL",
+          UPGRADE_TOOL: "UPGRADE_TOOL",
+          DISCOVER_ELARA: "DISCOVER_ELARA",
+          TALK_TO_ELARA: "TALK_TO_ELARA",
+          RECEIVE_BLESSING: "RECEIVE_BLESSING",
+          HOST_FESTIVAL: "HOST_FESTIVAL",
+          ACCEPT_REQUEST: "ACCEPT_REQUEST",
+          COMPLETE_REQUEST: "COMPLETE_REQUEST",
+      };
+      // ============== END: types.ts ==============
+
+
+      // ============== START: components/Icons.tsx ==============
+      const HeartIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+      );
+
+      const SunIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+      );
+
+      const RainyIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-2-9.75M15 12a3 3 0 00-3-3H6a3 3 0 00-3 3v.188M13 19l-1 1M10 19l-1 1" />
+          </svg>
+      );
+
+      const FoggyIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5M3.75 6.75h16.5M3.75 17.25h16.5" />
+          </svg>
+      );
+
+      const WaterDropIcon = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 16.5A6.75 6.75 0 0012 22.25a6.75 6.75 0 004.5-5.75m-9 0a6.75 6.75 0 019 0m-9 0A2.25 2.25 0 015.25 12V6.75a2.25 2.25 0 012.25-2.25h9a2.25 2.25 0 012.25 2.25v5.25a2.25 2.25 0 01-2.25 2.25m-9 0h9" />
+        </svg>
+      );
+
+      const AnvilIcon = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h8a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1V8a1 1 0 00-1-1z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 7V5c0-1.1.9-2 2-2h8a2 2 0 012 2v2" />
+        </svg>
+      );
+
+      const FriendshipIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${className}`} viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.787l1.094.667a2 2 0 002.592-1.117l.958-1.745a2 2 0 013.592-1.117l.958 1.745a2 2 0 002.592 1.117l1.094-.667A2 2 0 0018 15.763v-5.43a2 2 0 00-1.106-1.787l-1.094-.667a2 2 0 00-2.592 1.117l-.958 1.745a2 2 0 01-3.592 1.117l-.958-1.745a2 2 0 00-2.592-1.117l-1.094.667A2 2 0 006 10.333z" />
+              <path d="M6 4.333a2 2 0 012-2h4a2 2 0 012 2v2.333a2 2 0 01-1.106 1.787l-1.094.667a2 2 0 01-2.592-1.117L10.5 8.245a2 2 0 00-1 0l-.658 1.2a2 2 0 01-2.592 1.117l-1.094-.667A2 2 0 016 6.666V4.333z" />
+          </svg>
+      );
+
+      const QuestIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+      );
+
+      const MoonIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+      );
+
+      const SproutIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h2M19 12h2M12 3v2M12 19v2M5.636 5.636l1.414 1.414M16.95 16.95l1.414 1.414M5.636 18.364l1.414-1.414M16.95 7.05l1.414-1.414M9 14h6M9 17h6M12 14v-4a2 2 0 012-2h0a2 2 0 012 2v4M12 14v-4a2 2 0 00-2-2h0a2 2 0 00-2 2v4" />
+          </svg>
+      );
+
+      const SunFlowerIcon = ({ className }) => (
+           <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+      );
+
+      const LeafIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.121 15.879A3 3 0 0112 17.586a3 3 0 01-2.121-1.707L3.414 5.414A2 2 0 015.414 3h13.172a2 2 0 011.414.586l-3.879 3.879M14.121 15.879L12 17.586l-2.121-1.707" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.121 15.879A3 3 0 0012 14.172a3 3 0 00-2.121 1.707" />
+          </svg>
+      );
+
+      const SnowflakeIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l-2.5 4M12 19l-2.5-4M8.5 7l-2 3.5M15.5 7l2 3.5M8.5 17l-2-3.5M15.5 17l2-3.5" />
+          </svg>
+      );
+
+      const CalendarIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+      );
+
+      const JournalIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2h-4a2 2 0 00-2 2z"/>
+          </svg>
+      );
+
+      const CollectionIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+      );
+
+      const FarmIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+      );
+
+      const HutIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3V12l-4-4zm14-2v12a1 1 0 01-1 1h-3V12l-4 4" />
+              <path d="M12 2.5l7 7V21H5V9.5l7-7z" stroke="none" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21V15a1 1 0 011-1h2a1 1 0 011 1v6" />
+          </svg>
+      );
+
+      const ForestIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 11.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H4.75a.75.75 0 01-.75-.75z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 11.25a8.715 8.715 0 00-1.74-5.322.75.75 0 00-1.226.79c.47 1.343.766 2.793.766 4.326a7.23 7.23 0 01-.36 2.308 6.75 6.75 0 01-3.79 4.884 6.75 6.75 0 01-7.22-.684A6.75 6.75 0 015.5 13.566a7.23 7.23 0 01-.36-2.308c0-1.533.296-2.983.766-4.326a.75.75 0 00-1.226-.79A8.715 8.715 0 005.5 11.25h13z" />
+          </svg>
+      );
+
+      const SeedlingIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-4-4h8m-4-7a9 9 0 018.663 11.458l-1.636 1.636a1 1 0 01-1.414 0l-1.637-1.636A7 7 0 0012 5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5a7 7 0 00-7 7 7 7 0 001.93 4.822l-1.636 1.636a1 1 0 000 1.414l1.636 1.636A9 9 0 0112 21a9 9 0 010-18z" />
+          </svg>
+      );
+
+      const ClearingIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1-1m5-5l-1.414-1.414a2 2 0 00-2.828 0L12 10" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
+          </svg>
+      );
+
+      const FishingRodIcon = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-2.492M13.684 16.6L19.5 12l-2.492-.569m-1.423-4.283L11.182 11.182m0 0l-2.225 2.51.569-2.492m2.225-2.51L12 3l-.569 2.492m0 0l-4.283 1.423L11.182 11.182" />
+        </svg>
+      );
+
+      const SendIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+          </svg>
+      );
+      // ============== END: components/Icons.tsx ==============
+
+
+      // ============== START: services/geminiService.ts ==============
+      let ai;
+
+      function initializeAI(apiKey) {
+          if (!apiKey) {
+              throw new Error("Khóa API không được cung cấp.");
+          }
+          ai = new GoogleGenAI({ apiKey });
+      }
+
+      const inventoryItemSchema = {
+          type: Type.OBJECT,
+          properties: {
+              name: {
+                  type: Type.STRING,
+                  description: "Tên của vật phẩm (ví dụ: 'Nấm Phát Sáng', 'Hạt Giống Cà Rốt Mùa Xuân', 'Gỗ', 'Đá', 'Cá Rô Đồng')."
+              },
+              description: {
+                  type: Type.STRING,
+                  description: "Mô tả ngắn, thơ mộng về vật phẩm."
+              },
+              itemType: {
+                  type: Type.STRING,
+                  enum: ["Thông Thường", "Hạt Giống", "Thu Hoạch", "Nguyên Liệu", "Cá"],
+                  description: "Loại vật phẩm. 'Nguyên Liệu' là vật liệu xây dựng (Gỗ, Đá). 'Cá' là cá bắt được từ hồ."
+              },
+              season: {
+                  type: Type.STRING,
+                  enum: ["Xuân", "Hạ", "Thu", "Đông"],
+                  description: "Mùa mà hạt giống này có thể được trồng. Bỏ qua đối với các loại vật phẩm khác."
+              },
+              growthDuration: {
+                  type: Type.INTEGER,
+                  description: "Số ngày cần thiết để hạt giống phát triển thành cây trồng có thể thu hoạch. Bỏ qua đối với các loại vật phẩm khác."
+              }
+          },
+          required: ["name", "description", "itemType"]
+      };
+
+      const requestSchema = {
+          type: Type.OBJECT,
+          properties: {
+              id: { type: Type.STRING, description: "Một ID duy nhất cho yêu cầu, ví dụ: 'aelin-mushroom-quest-1'." },
+              npc: { type: Type.STRING, enum: Object.values(NPCName), description: "NPC đưa ra yêu cầu." },
+              description: { type: Type.STRING, description: "Mô tả ngắn về yêu cầu." },
+              requiredItems: {
+                  type: Type.ARRAY,
+                  items: {
+                      type: Type.OBJECT,
+                      properties: {
+                          name: { type: Type.STRING, description: "Tên vật phẩm yêu cầu." },
+                          quantity: { type: Type.INTEGER, description: "Số lượng yêu cầu." }
+                      },
+                      required: ["name", "quantity"]
+                  }
+              },
+              reward: {
+                  type: Type.OBJECT,
+                  properties: {
+                      items: { type: Type.ARRAY, items: inventoryItemSchema },
+                      friendship: { type: Type.INTEGER, description: "Điểm tình bạn nhận được." }
+                  },
+              },
+          },
+          required: ["id", "npc", "description", "requiredItems", "reward"]
+      };
+
+      const choiceSchema = {
+          type: Type.OBJECT,
+          properties: {
+              text: {
+                  type: Type.STRING,
+                  description: "Văn bản cho nút lựa chọn, thể hiện một hành động nhẹ nhàng. Bắt buộc.",
+              },
+              outcome: {
+                  type: Type.STRING,
+                  description: "Một mô tả ngắn, 1 câu về những gì xảy ra khi lựa chọn được thực hiện. Bắt buộc.",
+              },
+              actionType: {
+                  type: Type.STRING,
+                  enum: Object.values(ActionType),
+                  description: "Loại hành động mà lựa chọn này kích hoạt. Sử dụng các loại hành động này theo quy trình. Bắt buộc."
+              },
+              statChanges: {
+                  type: Type.OBJECT,
+                  description: "Lựa chọn ảnh hưởng đến chỉ số linh hồn của người chơi như thế nào.",
+                  properties: {
+                      spirit: {
+                          type: Type.INTEGER,
+                          description: "Thay đổi về linh hồn. Có thể là số dương hoặc âm. Một con số nhỏ, ví dụ: từ -15 đến +15."
+                      },
+                  },
+              },
+               friendshipChange: {
+                  type: Type.OBJECT,
+                  description: "Lựa chọn ảnh hưởng đến tình bạn với NPC như thế nào.",
+                  properties: {
+                      aelin: { type: Type.INTEGER },
+                      kael: { type: Type.INTEGER },
+                      elara: { type: Type.INTEGER },
+                  },
+              },
+              itemsGained: {
+                   type: Type.ARRAY,
+                   description: "Một mảng các vật phẩm người chơi thu thập được từ lựa chọn này. Có thể là mảng rỗng.",
+                   items: inventoryItemSchema
+              },
+              animalGained: {
+                  type: Type.OBJECT,
+                  description: "Con vật người chơi nhận được. Chỉ định nếu actionType là 'BEFRIEND_ANIMAL'.",
+                  properties: {
+                      name: { type: Type.STRING, description: "Tên con vật, ví dụ 'Gà Con Lạc Lối'." },
+                      description: { type: Type.STRING, description: "Mô tả ngắn về con vật." }
+                  }
+              },
+              itemToUse: {
+                  type: Type.STRING,
+                  description: "Vật phẩm được sử dụng từ túi đồ (ví dụ: tên hạt giống để trồng khi actionType là 'PLANT_SEED')."
+              },
+              powerDetails: {
+                  type: Type.OBJECT,
+                  description: "Chi tiết về sức mạnh được sử dụng. Chỉ định nếu actionType là 'USE_FOREST_POWER'.",
+                  properties: {
+                      type: { type: Type.STRING, enum: ['CREATE_SPRING', 'GROW_CROPS'], description: "Loại sức mạnh được sử dụng." },
+                      spiritCost: { type: Type.INTEGER, description: "Chi phí linh hồn để sử dụng sức mạnh." }
+                  }
+              },
+              requestGained: { ...requestSchema, description: "Một yêu cầu mới được đưa ra cho người chơi." },
+              requestToCompleteId: { type: Type.STRING, description: "ID của yêu cầu được hoàn thành." }
+          },
+          required: ["text", "outcome", "actionType"]
+      };
+
+      const eventSchema = {
+          type: Type.OBJECT,
+          properties: {
+              description: {
+                  type: Type.STRING,
+                  description: "Một đoạn văn thơ mộng, thanh bình và miêu tả về sự kiện hoặc địa điểm, phù hợp với mùa, thời gian trong ngày, vị trí và THỜI TIẾT hiện tại. Tối đa 3 câu.",
+              },
+              imagePrompt: {
+                  type: Type.STRING,
+                  description: "Một lời nhắc chi tiết, nghệ thuật bằng TIẾNG ANH cho một trình tạo hình ảnh. Phong cách nên là 'dreamy, ethereal, glowing, digital painting, stardew valley inspired'. Lời nhắc PHẢI phản ánh mùa, thời gian trong ngày, vị trí, THỜI TIẾT (ví dụ: 'rainy afternoon', 'foggy morning', 'sunny day') và các nhân vật có mặt.",
+              },
+              choices: {
+                  type: Type.ARRAY,
+                  description: "Một mảng gồm 2-3 lựa chọn cho người chơi.",
+                  items: choiceSchema
+              },
+              updatedNpcLocations: {
+                  type: Type.OBJECT,
+                  description: "Vị trí mới của tất cả các NPC trong buổi này. Bắt buộc.",
+                  properties: {
+                      [NPCName.Aelin]: { type: Type.STRING, enum: Object.values(Location), nullable: true },
+                      [NPCName.Kael]: { type: Type.STRING, enum: Object.values(Location), nullable: true },
+                      [NPCName.Elara]: { type: Type.STRING, enum: Object.values(Location), nullable: true },
+                  }
+              },
+              worldEvent: {
+                  type: Type.OBJECT,
+                  description: "Một sự kiện thế giới ngẫu nhiên xảy ra vào đầu ngày. Chỉ xảy ra một lần mỗi ngày.",
+                  properties: {
+                      id: { type: Type.STRING, description: "ID duy nhất cho sự kiện, ví dụ 'meteor-shower'." },
+                      description: { type: Type.STRING, description: "Mô tả về sự kiện thế giới."}
+                  }
+              }
+          },
+          required: ["description", "imagePrompt", "choices", "updatedNpcLocations"]
+      };
+
+      function getSystemPrompt(playerState) {
+          let systemPrompt = `Bạn là người quản trò cho "Thung Lũng An Yên", một game RPG mô phỏng cuộc sống nhẹ nhàng. Nhiệm vụ của bạn là tạo ra các sự kiện thơ mộng, thanh bình. Luôn tuân thủ định dạng JSON được yêu cầu.
+
+      **Không khí & Chủ đề:**
+      - **Không khí:** Yên bình, thư giãn, một chút kỳ diệu, lấy cảm hứng từ "Isekai Nonbiri Nouka" và "Stardew Valley". Tránh các xung đột bạo lực hoặc kịch tính căng thẳng.
+      - **Mô tả:** Ngắn gọn (2-3 câu), giàu hình ảnh.
+      - **Lựa chọn:** Cung cấp 2-3 lựa chọn rõ ràng, mang tính hành động.
+
+      **THẾ GIỚI ĐỘNG (RẤT QUAN TRỌNG):**
+      1.  **Lịch trình NPC:** Các NPC di chuyển! Bạn PHẢI quyết định vị trí của họ cho mỗi buổi (Sáng, Trưa, Chiều, Tối) và trả về trong "updatedNpcLocations".
+          *   **Aelin (Nhà thảo mộc học):** Thích ở trong Túp lều (TUP_LEU_AELIN), nhưng có thể đi vào Rừng (RUNG) vào những ngày nắng đẹp.
+          *   **Kael (Thợ rèn):** Gần như luôn ở Lò Rèn (LO_REN_CUA_KAEL).
+          *   **Elara (Tinh linh):** Chỉ xuất hiện ở Bờ Hồ (BO_HO_YEN_A) vào buổi Tối. Những lúc khác, vị trí của cô ấy là null.
+      2.  **Sự kiện Thế giới:** Vào buổi SÁNG, có 25% cơ hội tạo ra một "worldEvent" nhỏ (ví dụ: mưa sao băng, đàn bướm bay qua) để làm ngày mới thêm đặc biệt.
+      3.  **Hệ thống Yêu cầu (Quest):**
+          *   Khi người chơi nói chuyện với NPC ("TALK_TO_AELIN", v.v.), có cơ hội tạo một lựa chọn "ACCEPT_REQUEST" với một "requestGained" mới. Yêu cầu phải hợp lý với NPC đó (Aelin cần thảo dược, Kael cần khoáng sản).
+          *   Nếu người chơi đang nói chuyện với đúng NPC và có đủ vật phẩm cho một yêu cầu đang hoạt động, hãy tạo một lựa chọn "COMPLETE_REQUEST" với "requestToCompleteId".
+
+      **Logic Tiến trình & Sự kiện:**
+      - **Gặp gỡ:** Giữ nguyên logic khám phá NPC lần đầu (DISCOVER_AELIN_HUT, DISCOVER_KAEL, DISCOVER_ELARA).
+      - **Tương tác:** Khi người chơi ở cùng địa điểm với một NPC (dựa trên "updatedNpcLocations" bạn tạo ra), hãy tạo sự kiện gặp gỡ và lựa chọn nói chuyện ("TALK_TO_...").
+      - **Logic khác:** Giữ nguyên logic xây nhà, trồng trọt, câu cá, sức mạnh thần rừng, và lễ hội.
+      - **Quan trọng:** Phản ánh MÙA, BUỔI, ĐỊA ĐIỂM và đặc biệt là **THỜI TIẾT** (${playerState.weather}) trong các mô tả, sự kiện và lời nhắc hình ảnh. Ví dụ, nếu Kael đang ở lò rèn, nhưng trời mưa, mô tả nên có cảnh "những giọt mưa gõ lách tách trên mái lò rèn".`;
+          
+          const isPlayerAt = (location) => playerState.location === location;
+          const isNpcAt = (npc, location) => playerState.npcLocations[npc] === location;
+
+          if (isPlayerAt(Location.RUNG)) {
+              if (isNpcAt(NPCName.Aelin, Location.RUNG)) systemPrompt += "\n- GỢI Ý: Aelin đang ở trong rừng! Tạo một cuộc gặp gỡ với bà ấy.";
+          }
+
+          if (isPlayerAt(Location.TUP_LEU_AELIN) && isNpcAt(NPCName.Aelin, Location.TUP_LEU_AELIN)) {
+              systemPrompt += "\n- GỢI Ý: Người chơi đang ở túp lều của Aelin. Tạo sự kiện tương tác với bà ấy (TALK_TO_AELIN). Cân nhắc đưa ra một yêu cầu (ACCEPT_REQUEST).";
+          }
+
+          if (isPlayerAt(Location.LO_REN_CUA_KAEL) && isNpcAt(NPCName.Kael, Location.LO_REN_CUA_KAEL)) {
+              systemPrompt += "\n- GỢI Ý: Người chơi đang ở lò rèn của Kael. Tạo sự kiện tương tác với anh ta (TALK_TO_KAEL). Cân nhắc đưa ra một yêu cầu hoặc lựa chọn nâng cấp công cụ.";
+          }
+          
+          if (isPlayerAt(Location.BO_HO_YEN_A)) {
+               if (isNpcAt(NPCName.Elara, Location.BO_HO_YEN_A)) {
+                  systemPrompt += "\n- GỢI Ý: Elara đang ở đây. Tạo sự kiện tương tác với cô ấy (TALK_TO_ELARA).";
+               }
+               systemPrompt += " Luôn cung cấp lựa chọn 'FISH'.";
+          }
+
+          return systemPrompt;
+      }
+
+      const generateGameEvent = async (history, playerState) => {
+          if (!ai) {
+              throw new Error("Dịch vụ AI chưa được khởi tạo. Vui lòng cung cấp khóa API.");
+          }
+          const systemInstruction = getSystemPrompt(playerState);
+          const historyString = history.slice(-5).join('\n');
+          const inventoryString = playerState.inventory.map(i => i.name).join(', ') || 'trống';
+          
+          const prompt = `Lịch sử gần đây:\n${historyString}\n\nTrạng thái người chơi: Ngày ${playerState.day}, Mùa ${playerState.season}, Buổi ${playerState.timeOfDay}, tại ${playerState.location}, Thời tiết ${playerState.weather}. Linh hồn: ${playerState.spirit}. Tình bạn Aelin: ${playerState.aelinFriendship}, Kael: ${playerState.kaelFriendship}, Elara: ${playerState.elaraFriendship}. Túi đồ: ${inventoryString}.\nHãy tạo một sự kiện mới.`;
+
+          const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
+              config: {
+                  responseMimeType: 'application/json',
+                  responseSchema: eventSchema,
+                  systemInstruction,
+              },
+          });
+
+          try {
+              const jsonText = response.text.trim();
+              return JSON.parse(jsonText);
+          } catch (e) {
+              console.error("Lỗi phân tích JSON từ API:", e);
+              console.error("Phản hồi nhận được:", response.text);
+              throw new Error("Không thể hiểu được lời thì thầm của khu rừng.");
+          }
+      };
+
+      const generateEventImage = async (prompt) => {
+          if (!ai) return "";
+          try {
+              const response = await ai.models.generateImages({
+                  model: 'imagen-3.0-generate-002',
+                  prompt: prompt,
+                  config: {
+                      numberOfImages: 1,
+                      outputMimeType: 'image/jpeg',
+                      aspectRatio: '16:9',
+                  },
+              });
+
+              const base64ImageBytes = response.generatedImages?.[0]?.image.imageBytes;
+              if (!base64ImageBytes) {
+                  console.warn("API không trả về hình ảnh, sử dụng hình ảnh trống.");
+                  return "";
+              }
+              return `data:image/jpeg;base64,${base64ImageBytes}`;
+          } catch (error) {
+              console.error("Lỗi tạo hình ảnh:", error);
+              return "";
+          }
+      };
+
+      const generateChoiceFromInput = async (userInput, playerState) => {
+          if (!ai) {
+              throw new Error("Dịch vụ AI chưa được khởi tạo. Vui lòng cung cấp khóa API.");
+          }
+          const gameLogicPrompt = getSystemPrompt(playerState);
+
+          const systemInstruction = `Bạn là bộ não logic của trò chơi "Thung Lũng An Yên". Vai trò của bạn là diễn giải hành động do người chơi nhập vào và chuyển nó thành một đối tượng JSON **Choice** duy nhất, hợp lệ.
+
+      **QUY TRÌNH BẮT BUỘC:**
+      1.  **Phân tích đầu vào:** Xem xét hành động người chơi muốn làm: "${userInput}".
+      2.  **Xem xét bối cảnh:** Dựa trên trạng thái hiện tại của người chơi (vị trí, túi đồ, thời gian, v.v.). Đặc biệt chú ý xem người chơi có ở cùng địa điểm với NPC nào không.
+      3.  **Áp dụng logic game:** Sử dụng các quy tắc logic game được cung cấp dưới đây để quyết định xem hành động có khả thi không.
+      4.  **Tạo đối tượng Choice:**
+          *   **Hành động hợp lệ:** Nếu người chơi có thể thực hiện hành động (ví dụ: "hoàn thành nhiệm vụ" khi nói chuyện với Aelin và có đủ vật phẩm), hãy tạo một đối tượng Choice với actionType phù hợp và các hiệu ứng tương ứng (vật phẩm nhận được, thay đổi chỉ số).
+          *   **Hành động không hợp lệ:** Nếu hành động là không thể (ví dụ: "nói chuyện với Kael" khi đang ở trong rừng), hãy tạo một đối tượng Choice với actionType: "DEFAULT" và một 'outcome' nhẹ nhàng giải thích tại sao họ không thể làm điều đó.
+      5.  **BẮT BUỘC tuân thủ JSON:** Phản hồi của bạn PHẢI là một đối tượng JSON duy nhất khớp với schema của Choice.
+
+      ---
+      **QUY TẮC LOGIC GAME:**
+      ${gameLogicPrompt}
+      ---
+      `;
+
+          const prompt = `Hành động của người chơi: "${userInput}".\nHãy tạo đối tượng JSON Choice tương ứng.`;
+
+           const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
+              config: {
+                  responseMimeType: 'application/json',
+                  responseSchema: choiceSchema,
+                  systemInstruction,
+              },
+          });
+
+          try {
+              const jsonText = response.text.trim();
+              return JSON.parse(jsonText);
+          } catch (e) {
+              console.error("Lỗi phân tích JSON từ API (generateChoiceFromInput):", e);
+              console.error("Phản hồi nhận được:", response.text);
+              throw new Error("Không thể diễn giải hành động của bạn.");
+          }
+      }
+      // ============== END: services/geminiService.ts ==============
+
+
+      // ============== START: components/LoadingSpinner.tsx ==============
+      const LoadingSpinner = () => {
+          return (
+              <svg
+                  className="animate-spin -ml-1 mr-3 h-8 w-8 text-spirit-light"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+              >
+                  <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                  ></circle>
+                  <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+              </svg>
+          );
+      };
+      // ============== END: components/LoadingSpinner.tsx ==============
+
+
+      // ============== START: components/ChoiceButton.tsx ==============
+      const ChoiceButton = ({ text, onClick, disabled }) => {
+          return (
+              <button
+                  onClick={onClick}
+                  disabled={disabled}
+                  className="w-full text-left p-4 bg-gray-700/50 hover:bg-gray-600/70 border border-gray-600 rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-spirit-light/70 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700/50"
+              >
+                  <p className="text-forest-header">{text}</p>
+              </button>
+          );
+      };
+      // ============== END: components/ChoiceButton.tsx ==============
+
+
+      // ============== START: components/StartScreen.tsx ==============
+      const StartScreen = ({ onStart, isLoading }) => {
+          const [apiKey, setApiKey] = useState('');
+
+          return (
+              <div className="text-center bg-forest-card rounded-xl shadow-2xl p-8 sm:p-12 w-full animate-fade-in-slow">
+                  <h2 className="text-3xl font-serif text-forest-header mb-4">Một Cuộc Hành Trình Chờ Đợi</h2>
+                  <p className="text-lg text-forest-text mb-6 max-w-2xl mx-auto">
+                      Hãy để lại thế giới phía sau và bước vào một vương quốc của phép thuật thanh bình. Rừng Thì Thầm đang gọi bạn, hứa hẹn những kỳ quan tĩnh lặng và những bí mật bị lãng quên.
+                  </p>
+                  <div className="max-w-md mx-auto mb-6">
+                       <label htmlFor="api-key" className="block text-sm font-medium text-forest-text mb-2">
+                          Nhập Khóa API Google AI của bạn
+                      </label>
+                      <input
+                          id="api-key"
+                          type="password"
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder="Dán khóa API của bạn vào đây"
+                          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-forest-header focus:outline-none focus:ring-2 focus:ring-spirit-light/70 transition-all"
+                          aria-label="Nhập Khóa API Google AI"
+                      />
+                       <p className="text-xs text-gray-500 mt-2">
+                          Khóa của bạn chỉ được lưu trong trình duyệt cho phiên này.
+                      </p>
+                  </div>
+                  <button
+                      onClick={() => onStart(apiKey)}
+                      disabled={isLoading || !apiKey.trim()}
+                      className="inline-flex items-center justify-center px-12 py-4 bg-spirit-light/80 hover:bg-spirit-light text-forest-bg font-bold text-lg rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-spirit-light/70 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      {isLoading ? (
+                          <>
+                              <LoadingSpinner />
+                              <span>Đánh thức Khu rừng...</span>
+                          </>
+                      ) : (
+                          "Tiến vào Khu rừng"
+                      )}
+                  </button>
+              </div>
+          );
+      };
+      // ============== END: components/StartScreen.tsx ==============
+
+
+      // ============== START: components/PlayerStats.tsx ==============
+      const SeasonIcon = ({ season }) => {
+          switch (season) {
+              case Season.XUAN: return <SproutIcon className="text-green-400" />;
+              case Season.HA: return <SunFlowerIcon className="text-yellow-400" />;
+              case Season.THU: return <LeafIcon className="text-orange-400" />;
+              case Season.DONG: return <SnowflakeIcon className="text-blue-300" />;
+              default: return null;
+          }
+      };
+
+      const TimeOfDayIcon = ({ timeOfDay }) => {
+          switch (timeOfDay) {
+              case TimeOfDay.SANG:
+              case TimeOfDay.TRUA:
+              case TimeOfDay.CHIEU:
+                  return <SunIcon className="text-yellow-300" />;
+              case TimeOfDay.TOI:
+                  return <MoonIcon className="text-indigo-300" />;
+              default: return null;
+          }
+      };
+
+      const LocationIcon = ({ location }) => {
+          switch(location) {
+              case Location.RUNG: return <ForestIcon className="text-green-500" />;
+              case Location.KHU_TRONG: return <ClearingIcon className="text-yellow-600" />;
+              case Location.TRANG_TRAI: return <FarmIcon className="text-amber-600" />;
+              case Location.TUP_LEU_AELIN: return <HutIcon className="text-purple-400" />;
+              case Location.BO_HO_YEN_A: return <FishingRodIcon className="text-blue-400" />;
+              case Location.LO_REN_CUA_KAEL: return <AnvilIcon className="text-orange-300" />;
+              default: return null;
+          }
+      }
+
+      const WeatherIcon = ({ weather }) => {
+          switch (weather) {
+              case Weather.NANG_CHAN_HOA: return <SunIcon className="text-yellow-300" />;
+              case Weather.MUA_PHUN: return <RainyIcon className="text-blue-400" />;
+              case Weather.SUONG_MU: return <FoggyIcon className="text-gray-400" />;
+              default: return null;
+          }
+      };
+
+      const StatItem = ({ icon, label, value, valueColorClass = "text-forest-header" }) => (
+          <div className="flex items-center space-x-2">
+              {icon}
+              <span className="font-sans text-base sm:text-lg font-medium text-forest-header whitespace-nowrap">{label}:</span>
+              <span className={`font-sans text-base sm:text-lg font-bold ${valueColorClass}`}>{value}</span>
+          </div>
+      );
+
+      const FriendshipStat = ({ icon, name, level, isPresent }) => (
+           <div className="flex items-center space-x-2 relative" title={`${name}: ${level}`}>
+              {icon}
+              {isPresent && <span className="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-forest-card"></span>}
+              <FriendshipIcon className="text-pink-400" />
+              <span className="font-sans text-base sm:text-lg font-bold text-pink-300">{level}</span>
+          </div>
+      )
+
+      const PlayerStats = ({ playerState }) => {
+          return (
+              <div className="w-full bg-forest-card/50 rounded-lg p-3 sm:p-4 mb-4 animate-fade-in shadow-lg border border-gray-700">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:flex xl:flex-wrap xl:justify-around items-center gap-y-3 gap-x-4">
+                      <StatItem icon={<HeartIcon className="text-spirit-light" />} label="Linh hồn" value={playerState.spirit} valueColorClass="text-spirit-light" />
+                      
+                      <div className="h-6 w-px bg-gray-600 hidden xl:block"></div>
+                      
+                      <StatItem icon={<LocationIcon location={playerState.location} />} label="Vị trí" value={playerState.location} />
+                      <StatItem icon={<WeatherIcon weather={playerState.weather} />} label="Thời tiết" value={playerState.weather} />
+                      <StatItem icon={<SeasonIcon season={playerState.season} />} label="Mùa" value={playerState.season} />
+                      <StatItem icon={<CalendarIcon className="text-gray-400" />} label="Ngày" value={playerState.day} />
+                      <StatItem icon={<TimeOfDayIcon timeOfDay={playerState.timeOfDay} />} label="Buổi" value={playerState.timeOfDay} />
+
+                      {(playerState.hasMetAelin || playerState.hasMetKael || playerState.hasMetElara) && (
+                           <div className="h-6 w-px bg-gray-600 hidden xl:block"></div>
+                      )}
+
+                      {playerState.hasMetAelin && (
+                          <FriendshipStat 
+                              icon={<HutIcon className="text-purple-400"/>} 
+                              name="Aelin" 
+                              level={playerState.aelinFriendship} 
+                              isPresent={playerState.npcLocations[NPCName.Aelin] === playerState.location}
+                          />
+                      )}
+                       {playerState.hasMetKael && (
+                          <FriendshipStat 
+                              icon={<AnvilIcon className="text-orange-300"/>} 
+                              name="Kael" 
+                              level={playerState.kaelFriendship} 
+                              isPresent={playerState.npcLocations[NPCName.Kael] === playerState.location}
+                          />
+                      )}
+                       {playerState.hasMetElara && (
+                          <FriendshipStat 
+                              icon={<WaterDropIcon className="text-cyan-400"/>} 
+                              name="Elara" 
+                              level={playerState.elaraFriendship} 
+                              isPresent={playerState.npcLocations[NPCName.Elara] === playerState.location}
+                          />
+                      )}
+                  </div>
+              </div>
+          );
+      };
+      // ============== END: components/PlayerStats.tsx ==============
+
+
+      // ============== START: components/InventoryPanel.tsx ==============
+      const InventoryPanel = ({ inventory }) => {
+          
+          const getItemTypeColor = (itemType) => {
+              switch (itemType) {
+                  case 'Hạt Giống': return 'text-green-400';
+                  case 'Thu Hoạch': return 'text-yellow-400';
+                  case 'Nguyên Liệu': return 'text-amber-500';
+                  default: return 'text-gray-400';
+              }
+          }
+
+          return (
+              <div className="w-full h-full bg-forest-card/50 rounded-lg p-4 animate-fade-in shadow-lg border border-gray-700">
+                  <h3 className="flex items-center text-lg font-serif font-bold text-forest-header mb-3">
+                      <CollectionIcon className="mr-2 text-curiosity-gold" />
+                      Túi Đồ
+                  </h3>
+                  {inventory.length > 0 ? (
+                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {inventory.map((item, index) => (
+                              <div key={index} className="group relative bg-gray-700/60 p-2 rounded-md border border-gray-600/80 text-center cursor-pointer">
+                                  <p className="text-sm text-forest-header truncate">{item.name}</p>
+                                  <div className="absolute bottom-full mb-2 w-max max-w-xs p-3 bg-gray-900 text-forest-text text-sm rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 pointer-events-none">
+                                      <p className="font-bold text-base mb-1 text-curiosity-gold">{item.name}</p>
+                                      <p className={`text-xs font-bold uppercase mb-2 ${getItemTypeColor(item.itemType)}`}>{item.itemType}</p>
+                                      <p>{item.description}</p>
+                                      {item.itemType === 'Hạt Giống' && (
+                                          <div className="mt-2 text-xs text-gray-400">
+                                              <p>Mùa: {item.season}</p>
+                                              <p>Lớn trong: {item.growthDuration} ngày</p>
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <p className="text-sm text-forest-text italic">Túi đồ của bạn đang trống.</p>
+                  )}
+              </div>
+          );
+      };
+      // ============== END: components/InventoryPanel.tsx ==============
+
+
+      // ============== START: components/FarmStatusPanel.tsx ==============
+      const FarmStatusPanel = ({ isFarmBuilt, animals, crops }) => {
+          if (!isFarmBuilt) {
+              return null;
+          }
+
+          return (
+              <div className="w-full h-full bg-forest-card/50 rounded-lg p-4 animate-fade-in shadow-lg border border-gray-700">
+                  <h3 className="flex items-center text-lg font-serif font-bold text-forest-header mb-3">
+                      <FarmIcon className="mr-2 text-amber-500" />
+                      Trang Trại An Yên
+                  </h3>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <h4 className="text-base font-bold text-forest-header mb-2">Vật Nuôi</h4>
+                          {animals.length > 0 ? (
+                              <ul className="space-y-1 list-disc list-inside text-sm text-forest-text">
+                                  {animals.map((animal, index) => (
+                                      <li key={index}>
+                                          {animal.name}
+                                          {animal.canProduce && <span className="text-xs text-yellow-400 ml-2">(Sẵn sàng)</span>}
+                                      </li>
+                                  ))}
+                              </ul>
+                          ) : (
+                              <p className="text-sm text-forest-text italic">Chưa có vật nuôi nào.</p>
+                          )}
+                      </div>
+
+                      <div className="border-t border-gray-700 my-2"></div>
+
+                      <div>
+                          <h4 className="text-base font-bold text-forest-header mb-2">Vườn Tược</h4>
+                          {crops.length > 0 ? (
+                               <div className="grid grid-cols-2 gap-3">
+                                  {crops.map((crop, index) => {
+                                      const progress = Math.min(100, Math.floor((crop.growthProgress / crop.growthDuration) * 100));
+                                      const isReady = progress >= 100;
+                                      return (
+                                          <div key={index} className="bg-gray-700/60 p-2 rounded-md border border-gray-600/80">
+                                              <p className="text-sm text-forest-header truncate flex items-center">
+                                                  <SeedlingIcon className={`mr-1 h-4 w-4 ${isReady ? 'text-green-400' : 'text-yellow-600'}`} />
+                                                  {crop.name}
+                                              </p>
+                                              <div className="w-full bg-gray-800 rounded-full h-1.5 mt-1">
+                                                  <div 
+                                                      className={`h-1.5 rounded-full ${isReady ? 'bg-green-500' : 'bg-yellow-500'}`}
+                                                      style={{ width: `${progress}%` }}
+                                                  ></div>
+                                              </div>
+                                              <p className="text-xs text-center mt-1 text-gray-400">{isReady ? "Sẵn sàng!" : `Ngày ${crop.growthProgress}/${crop.growthDuration}`}</p>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          ) : (
+                              <p className="text-sm text-forest-text italic">Chưa có cây trồng nào.</p>
+                          )}
+                      </div>
+                  </div>
+              </div>
+          );
+      };
+      // ============== END: components/FarmStatusPanel.tsx ==============
+
+
+      // ============== START: components/DiscoveryJournalPanel.tsx ==============
+      const DiscoveryJournalPanel = ({ journal, onClose }) => {
+          const discoveredItems = Object.values(journal.items);
+          const discoveredAnimals = Object.values(journal.animals);
+
+          return (
+              <div 
+                  className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in"
+                  onClick={onClose}
+                  aria-modal="true"
+                  role="dialog"
+              >
+                  <div 
+                      className="bg-forest-card w-full max-w-2xl max-h-[85vh] rounded-xl shadow-2xl border border-gray-700 flex flex-col"
+                      onClick={e => e.stopPropagation()}
+                  >
+                      <header className="p-4 border-b border-gray-600 flex justify-between items-center sticky top-0 bg-forest-card z-10">
+                          <h2 className="flex items-center text-2xl font-serif text-forest-header">
+                              <JournalIcon className="mr-3 text-curiosity-gold" />
+                              Sổ Tay Khám Phá
+                          </h2>
+                          <button 
+                              onClick={onClose} 
+                              className="text-gray-400 hover:text-white text-3xl leading-none"
+                              aria-label="Đóng"
+                          >
+                              &times;
+                          </button>
+                      </header>
+
+                      <div className="p-6 overflow-y-auto">
+                          <section>
+                              <h3 className="flex items-center text-xl font-serif text-curiosity-gold mb-4">
+                                  <CollectionIcon className="mr-2 h-6 w-6" /> Vật Phẩm Đã Tìm Thấy
+                              </h3>
+                              {discoveredItems.length > 0 ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      {discoveredItems.map(item => (
+                                          <div key={item.name} className="bg-gray-700/50 p-4 rounded-lg border border-gray-600/70">
+                                              <p className="font-bold text-forest-header text-lg">{item.name}</p>
+                                              <p className="text-sm text-forest-text italic mt-1">{item.description}</p>
+                                          </div>
+                                      ))}
+                                  </div>
+                              ) : (
+                                  <p className="text-forest-text italic">Chưa khám phá được vật phẩm nào.</p>
+                              )}
+                          </section>
+
+                          <div className="border-t border-gray-700 my-6"></div>
+
+                          <section>
+                              <h3 className="flex items-center text-xl font-serif text-curiosity-gold mb-4">
+                                  <FarmIcon className="mr-2 h-6 w-6" /> Sinh Vật Đã Gặp
+                              </h3>
+                               {discoveredAnimals.length > 0 ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      {discoveredAnimals.map(animal => (
+                                          <div key={animal.name} className="bg-gray-700/50 p-4 rounded-lg border border-gray-600/70">
+                                              <p className="font-bold text-forest-header text-lg">{animal.name}</p>
+                                              <p className="text-sm text-forest-text italic mt-1">{animal.description}</p>
+                                          </div>
+                                      ))}
+                                  </div>
+                              ) : (
+                                  <p className="text-forest-text italic">Chưa kết bạn với sinh vật nào.</p>
+                              )}
+                          </section>
+                      </div>
+                  </div>
+              </div>
+          );
+      };
+      // ============== END: components/DiscoveryJournalPanel.tsx ==============
+
+
+      // ============== START: components/QuestLogPanel.tsx ==============
+      const NPCIcon = ({ npc }) => {
+          switch(npc) {
+              case NPCName.Aelin: return <HutIcon className="h-5 w-5 text-purple-400" />;
+              case NPCName.Kael: return <AnvilIcon className="h-5 w-5 text-orange-300" />;
+              case NPCName.Elara: return <WaterDropIcon className="h-5 w-5 text-cyan-400" />;
+              default: return null;
+          }
+      }
+
+      const QuestLogPanel = ({ requests, onClose }) => {
+          return (
+              <div
+                  className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in"
+                  onClick={onClose}
+                  aria-modal="true"
+                  role="dialog"
+              >
+                  <div
+                      className="bg-forest-card w-full max-w-2xl max-h-[85vh] rounded-xl shadow-2xl border border-gray-700 flex flex-col"
+                      onClick={e => e.stopPropagation()}
+                  >
+                      <header className="p-4 border-b border-gray-600 flex justify-between items-center sticky top-0 bg-forest-card z-10">
+                          <h2 className="flex items-center text-2xl font-serif text-forest-header">
+                              <QuestIcon className="mr-3 text-green-400" />
+                              Sổ Ghi Chép Nhiệm Vụ
+                          </h2>
+                          <button
+                              onClick={onClose}
+                              className="text-gray-400 hover:text-white text-3xl leading-none"
+                              aria-label="Đóng"
+                          >
+                              &times;
+                          </button>
+                      </header>
+
+                      <div className="p-6 overflow-y-auto">
+                          {requests.length > 0 ? (
+                              <div className="space-y-4">
+                                  {requests.map(req => (
+                                      <div key={req.id} className="bg-gray-700/50 p-4 rounded-lg border border-gray-600/70">
+                                          <div className="flex items-center mb-2">
+                                              <NPCIcon npc={req.npc} />
+                                              <p className="font-bold text-forest-header text-lg ml-2">Yêu cầu từ {req.npc}</p>
+                                          </div>
+                                          <p className="text-sm text-forest-text italic mb-4">{req.description}</p>
+                                          
+                                          <div className="space-y-2">
+                                              <div>
+                                                  <h4 className="text-xs font-bold uppercase text-gray-400">Cần có:</h4>
+                                                  <ul className="list-disc list-inside text-sm text-forest-text">
+                                                      {req.requiredItems.map(item => (
+                                                          <li key={item.name}>{item.quantity}x {item.name}</li>
+                                                      ))}
+                                                  </ul>
+                                              </div>
+                                               <div>
+                                                  <h4 className="text-xs font-bold uppercase text-gray-400">Phần thưởng:</h4>
+                                                   <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-forest-text">
+                                                      {req.reward.friendship && (
+                                                          <span className="flex items-center"><FriendshipIcon className="h-4 w-4 mr-1 text-pink-400" /> +{req.reward.friendship} Tình bạn</span>
+                                                      )}
+                                                      {req.reward.items?.map(item => (
+                                                           <span key={item.name} className="flex items-center"><CollectionIcon className="h-4 w-4 mr-1 text-curiosity-gold" /> {item.name}</span>
+                                                      ))}
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                      </div>
+                                  ))}
+                              </div>
+                          ) : (
+                               <div className="text-center py-8">
+                                  <QuestIcon className="mx-auto h-12 w-12 text-gray-500" />
+                                  <p className="text-forest-text italic mt-4">Chưa có yêu cầu nào đang hoạt động.</p>
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              </div>
+          );
+      };
+      // ============== END: components/QuestLogPanel.tsx ==============
+
+
+      // ============== START: components/GameScreen.tsx ==============
+      const GameScreen = ({ event, image, onChoice, isLoading, isGameOver, onRestart, onTextInputSubmit }) => {
+          const [inputValue, setInputValue] = useState('');
+
+          const handleFormSubmit = (e) => {
+              e.preventDefault();
+              if (inputValue.trim()) {
+                  onTextInputSubmit(inputValue.trim());
+                  setInputValue('');
+              }
+          };
+          
+          if (isLoading && !event) {
+              return <div className="text-center"><LoadingSpinner /><p className="mt-4 text-lg">Khu rừng đang cựa mình...</p></div>;
+          }
+
+          if (!event) {
+              return <div className="text-center text-lg text-forest-text">Con đường đã biến mất.</div>;
+          }
+          
+          const gameOverMessage = "Linh hồn bạn tan biến, và bạn tìm thấy một thảm rêu mềm mại để nghỉ ngơi. Rừng Thì Thầm ru bạn vào một giấc ngủ sâu và yên bình. Hành trình của bạn kết thúc, tại đây.";
+
+          return (
+              <div className="bg-forest-card rounded-xl shadow-2xl p-6 sm:p-8 w-full animate-fade-in-slow overflow-hidden">
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-6 border-2 border-gray-600/50 shadow-lg">
+                      {isLoading && (
+                          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
+                              <LoadingSpinner />
+                          </div>
+                      )}
+                       {!image && !isLoading && <div className="w-full h-full bg-gray-900 flex items-center justify-center text-forest-text">Một hình ảnh đang hiện ra...</div>}
+                      {image && <img src={image} alt={event.imagePrompt} className="w-full h-full object-cover transition-opacity duration-700" />}
+                  </div>
+
+                  <div className="text-center">
+                      <p className="text-lg sm:text-xl text-forest-text leading-relaxed mb-8 min-h-[6rem]">
+                          {isGameOver ? gameOverMessage : event.description}
+                      </p>
+
+                      <div className="flex flex-col gap-4">
+                          {isGameOver ? (
+                               <button
+                                  onClick={onRestart}
+                                  className="w-full p-4 bg-spirit-light/80 hover:bg-spirit-light text-forest-bg font-bold rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-spirit-light/70"
+                              >
+                                  Bắt đầu Hành trình Mới
+                              </button>
+                          ) : (
+                              event.choices.map((choice, index) => (
+                                  <ChoiceButton
+                                      key={index}
+                                      text={choice.text}
+                                      onClick={() => onChoice(choice)}
+                                      disabled={isLoading}
+                                  />
+                              ))
+                          )}
+                      </div>
+
+                       {!isGameOver && (
+                          <div className="mt-8">
+                              <form onSubmit={handleFormSubmit}>
+                                  <div className="flex items-center gap-2">
+                                      <input
+                                          type="text"
+                                          value={inputValue}
+                                          onChange={(e) => setInputValue(e.target.value)}
+                                          placeholder="Bạn muốn làm gì tiếp theo?"
+                                          disabled={isLoading}
+                                          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-forest-header focus:outline-none focus:ring-2 focus:ring-spirit-light/70 transition-all disabled:opacity-50"
+                                          aria-label="Nhập hành động của bạn"
+                                      />
+                                      <button
+                                          type="submit"
+                                          disabled={isLoading || !inputValue.trim()}
+                                          className="p-3 bg-spirit-light/80 hover:bg-spirit-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
+                                          aria-label="Gửi hành động"
+                                      >
+                                          <SendIcon className="h-6 w-6 text-forest-bg" />
+                                      </button>
+                                  </div>
+                              </form>
+                          </div>
+                      )}
+
+                  </div>
+              </div>
+          );
+      };
+      // ============== END: components/GameScreen.tsx ==============
+
+
+      // ============== START: App.tsx ==============
+      const App = () => {
+          const [gameState, setGameState] = useState("START_SCREEN");
+          const [playerState, setPlayerState] = useState(null);
+          const [currentEvent, setCurrentEvent] = useState(null);
+          const [eventImage, setEventImage] = useState('');
+          const [isLoading, setIsLoading] = useState(false);
+          const [errorMessage, setErrorMessage] = useState('');
+          const [history, setHistory] = useState([]);
+          const [isJournalOpen, setIsJournalOpen] = useState(false);
+          const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
+
+          const advanceDay = useCallback((currentPlayerState) => {
+              let nextState = { ...currentPlayerState };
+              
+              const nextDay = nextState.day + 1;
+              
+              const updatedCrops = nextState.plantedCrops.map(crop => ({
+                  ...crop,
+                  growthProgress: crop.growthProgress + 1,
+              })).filter(crop => crop.growthProgress <= crop.growthDuration);
+
+              const updatedAnimals = nextState.farmAnimals.map(animal => ({
+                  ...animal,
+                  canProduce: true, 
+              }));
+              
+              let newSeason = nextState.season;
+              if (nextDay > 1 && (nextDay - 1) % 7 === 0) { 
+                  const seasonProgression = {
+                      [Season.XUAN]: Season.HA,
+                      [Season.HA]: Season.THU,
+                      [Season.THU]: Season.DONG,
+                      [Season.DONG]: Season.XUAN,
+                  };
+                  newSeason = seasonProgression[nextState.season];
+              }
+              
+              const weatherOptions = Object.values(Weather);
+              const newWeather = weatherOptions[Math.floor(Math.random() * weatherOptions.length)];
+
+              if (nextState.hasMagicalSpring) {
+                  nextState.spirit = Math.min(200, nextState.spirit + 5);
+              }
+
+              if (nextState.activeBlessing) {
+                  nextState.activeBlessing.turnsLeft -= 1;
+                  if (nextState.activeBlessing.turnsLeft <= 0) {
+                      nextState.activeBlessing = null;
+                  }
+              }
+              
+              nextState.activeWorldEvent = null;
+
+              return {
+                  ...nextState,
+                  day: nextDay,
+                  season: newSeason,
+                  weather: newWeather,
+                  plantedCrops: updatedCrops,
+                  farmAnimals: updatedAnimals,
+                  timeOfDay: TimeOfDay.SANG,
+              };
+          }, []);
+
+          const getNewEvent = useCallback(async (newHistory, nextPlayerState) => {
+              setIsLoading(true);
+              setErrorMessage('');
+              try {
+                  const eventData = await generateGameEvent(newHistory, nextPlayerState);
+                  setCurrentEvent(eventData);
+
+                  let eventHistory = [eventData.description];
+                  if (eventData.worldEvent) {
+                       eventHistory.unshift(`✨ ${eventData.worldEvent.description}`);
+                  }
+                  setHistory(prev => [...prev.slice(-10), ...eventHistory]);
+
+                  setPlayerState(prev => {
+                      if (!prev) return null;
+                      return {
+                          ...prev,
+                          npcLocations: eventData.updatedNpcLocations ?? prev.npcLocations,
+                          activeWorldEvent: eventData.worldEvent ?? prev.activeWorldEvent,
+                      };
+                  });
+                  
+                  const image = await generateEventImage(eventData.imagePrompt);
+                  setEventImage(image);
+
+              } catch (error) {
+                  console.error(error);
+                  setErrorMessage(error instanceof Error ? error.message : "Đã xảy ra lỗi không xác định.");
+              } finally {
+                  setIsLoading(false);
+              }
+          }, []);
+
+          const startGame = useCallback(async (apiKey) => {
+              setIsLoading(true);
+              setErrorMessage('');
+              
+              try {
+                  initializeAI(apiKey);
+              } catch (error) {
+                  setErrorMessage(error instanceof Error ? error.message : "Khóa API không hợp lệ.");
+                  setIsLoading(false);
+                  return;
+              }
+
+              const initialPlayerState = {
+                  spirit: 100,
+                  inventory: [],
+                  day: 1,
+                  timeOfDay: TimeOfDay.SANG,
+                  season: Season.XUAN,
+                  location: Location.RUNG,
+                  weather: Weather.NANG_CHAN_HOA,
+                  hasDiscoveredClearing: false,
+                  isFarmBuilt: false,
+                  farmAnimals: [],
+                  plantedCrops: [],
+                  discoveryJournal: { items: {}, animals: {} },
+                  hasMetAelin: false,
+                  aelinFriendship: 0,
+                  hasDiscoveredLake: false,
+                  hasMagicalSpring: false,
+                  hasMetKael: false,
+                  kaelFriendship: 0,
+                  hasMetElara: false,
+                  elaraFriendship: 0,
+                  upgradedTools: { fishingRod: false },
+                  activeBlessing: null,
+                  npcLocations: {
+                      [NPCName.Aelin]: null,
+                      [NPCName.Kael]: null,
+                      [NPCName.Elara]: null,
+                  },
+                  activeRequests: [],
+                  activeWorldEvent: null,
+              };
+              setPlayerState(initialPlayerState);
+              setGameState(GameState.PLAYING);
+
+              const initialHistory = ["Bạn thức dậy giữa một khu rừng xa lạ, không khí trong lành và thanh bình."];
+              setHistory(initialHistory);
+              
+              await getNewEvent(initialHistory, initialPlayerState);
+          }, [getNewEvent]);
+
+          const handleChoice = useCallback(async (choice) => {
+              if (!playerState || isLoading) return;
+
+              setIsLoading(true);
+              let nextPlayerState = { ...playerState };
+              let newHistory = [...history, choice.outcome];
+              
+              nextPlayerState.spirit += choice.statChanges?.spirit ?? 0;
+              
+              if (choice.friendshipChange) {
+                  nextPlayerState.aelinFriendship += choice.friendshipChange.aelin ?? 0;
+                  nextPlayerState.kaelFriendship += choice.friendshipChange.kael ?? 0;
+                  nextPlayerState.elaraFriendship += choice.friendshipChange.elara ?? 0;
+              }
+
+              if (choice.itemsGained) {
+                  const newJournalItems = { ...nextPlayerState.discoveryJournal.items };
+                  choice.itemsGained.forEach(item => {
+                      nextPlayerState.inventory.push(item);
+                      if (!newJournalItems[item.name]) {
+                          newJournalItems[item.name] = item;
+                      }
+                  });
+                  nextPlayerState.discoveryJournal = { ...nextPlayerState.discoveryJournal, items: newJournalItems };
+              }
+              
+              if (choice.itemToUse) {
+                  const itemIndex = nextPlayerState.inventory.findIndex(i => i.name === choice.itemToUse);
+                  if (itemIndex > -1) {
+                      nextPlayerState.inventory.splice(itemIndex, 1);
+                  }
+              }
+              
+              if (choice.animalGained) {
+                  const newAnimal = { ...choice.animalGained, canProduce: true };
+                  nextPlayerState.farmAnimals.push(newAnimal);
+                  const newJournalAnimals = { ...nextPlayerState.discoveryJournal.animals };
+                  if (!newJournalAnimals[newAnimal.name]) {
+                      newJournalAnimals[newAnimal.name] = newAnimal;
+                  }
+                  nextPlayerState.discoveryJournal = { ...nextPlayerState.discoveryJournal, animals: newJournalAnimals };
+              }
+              
+              let newEventNeeded = true;
+              
+              const timeProgression = {
+                  [TimeOfDay.SANG]: TimeOfDay.TRUA,
+                  [TimeOfDay.TRUA]: TimeOfDay.CHIEU,
+                  [TimeOfDay.CHIEU]: TimeOfDay.TOI,
+                  [TimeOfDay.TOI]: null,
+              };
+
+              const nextTime = timeProgression[nextPlayerState.timeOfDay];
+
+              if (nextTime) {
+                  nextPlayerState.timeOfDay = nextTime;
+              } else {
+                  nextPlayerState = advanceDay(nextPlayerState);
+              }
+
+              switch(choice.actionType) {
+                  case ActionType.DISCOVER_CLEARING:
+                      nextPlayerState.hasDiscoveredClearing = true;
+                      nextPlayerState.location = Location.KHU_TRONG;
+                      break;
+                  case ActionType.BUILD_FARMHOUSE:
+                      nextPlayerState.isFarmBuilt = true;
+                      nextPlayerState.location = Location.TRANG_TRAI;
+                      let woodToRemove = 20;
+                      let stoneToRemove = 10;
+                      let woodCount = 0;
+                      let stoneCount = 0;
+                      nextPlayerState.inventory = nextPlayerState.inventory.filter(item => {
+                          if (item.name === 'Gỗ' && woodCount < woodToRemove) {
+                              woodCount++;
+                              return false;
+                          }
+                          if (item.name === 'Đá' && stoneCount < stoneToRemove) {
+                              stoneCount++;
+                              return false;
+                          }
+                          return true;
+                      });
+                      break;
+                  case ActionType.RETURN_HOME:
+                      nextPlayerState.location = nextPlayerState.isFarmBuilt ? Location.TRANG_TRAI : Location.KHU_TRONG;
+                      break;
+                  case ActionType.LEAVE_HOME:
+                       if (playerState.location === Location.TUP_LEU_AELIN || playerState.location === Location.LO_REN_CUA_KAEL) {
+                          nextPlayerState.location = Location.RUNG;
+                      } else if (playerState.location === Location.BO_HO_YEN_A) {
+                          nextPlayerState.location = Location.RUNG;
+                      } else {
+                          nextPlayerState.location = Location.RUNG;
+                      }
+                      break;
+                  case ActionType.PLANT_SEED:
+                       const seedToPlant = playerState.inventory.find(i => i.name === choice.itemToUse && i.itemType === 'Hạt Giống');
+                       if (seedToPlant && seedToPlant.growthDuration) {
+                           const newCrop = {
+                               name: seedToPlant.name.replace('Hạt Giống ', ''),
+                               dayPlanted: playerState.day,
+                               growthDuration: seedToPlant.growthDuration,
+                               growthProgress: 0,
+                           };
+                           nextPlayerState.plantedCrops.push(newCrop);
+                       }
+                      break;
+                   case ActionType.HARVEST_CROP:
+                      const cropsToHarvest = nextPlayerState.plantedCrops.filter(c => c.growthProgress >= c.growthDuration);
+                      const harvestedItems = cropsToHarvest.map(c => ({
+                          name: `Rau ${c.name}`,
+                          description: `Một sản phẩm tươi ngon từ trang trại của bạn.`,
+                          itemType: 'Thu Hoạch'
+                      }));
+                       nextPlayerState.inventory.push(...harvestedItems);
+                       nextPlayerState.plantedCrops = nextPlayerState.plantedCrops.filter(c => c.growthProgress < c.growthDuration);
+                      break;
+                  case ActionType.DISCOVER_AELIN_HUT:
+                      nextPlayerState.hasMetAelin = true;
+                      nextPlayerState.location = Location.TUP_LEU_AELIN;
+                      break;
+                  case ActionType.RETURN_TO_FOREST:
+                      nextPlayerState.location = Location.RUNG;
+                      break;
+                  case ActionType.DISCOVER_LAKE:
+                      nextPlayerState.hasDiscoveredLake = true;
+                      nextPlayerState.location = Location.BO_HO_YEN_A;
+                      break;
+                  case ActionType.USE_FOREST_POWER:
+                      if (choice.powerDetails) {
+                          nextPlayerState.spirit -= choice.powerDetails.spiritCost;
+                          switch(choice.powerDetails.type) {
+                              case 'CREATE_SPRING':
+                                  nextPlayerState.hasMagicalSpring = true;
+                                  break;
+                              case 'GROW_CROPS':
+                                   nextPlayerState.plantedCrops = nextPlayerState.plantedCrops.map(c => ({
+                                      ...c,
+                                      growthProgress: c.growthDuration,
+                                   }));
+                                  break;
+                          }
+                      }
+                      break;
+                  case ActionType.DISCOVER_KAEL:
+                      nextPlayerState.hasMetKael = true;
+                      nextPlayerState.location = Location.LO_REN_CUA_KAEL;
+                      break;
+                  case ActionType.UPGRADE_TOOL:
+                      nextPlayerState.upgradedTools.fishingRod = true;
+                      let woodRemoved = 0;
+                      let stoneRemoved = 0;
+                      nextPlayerState.inventory = nextPlayerState.inventory.filter(item => {
+                          if (item.name === 'Gỗ' && woodRemoved < 20) {
+                              woodRemoved++; return false;
+                          }
+                          if (item.name === 'Đá' && stoneRemoved < 20) {
+                              stoneRemoved++; return false;
+                          }
+                          return true;
+                      });
+                      break;
+                  case ActionType.DISCOVER_ELARA:
+                      nextPlayerState.hasMetElara = true;
+                      break;
+                  case ActionType.RECEIVE_BLESSING:
+                      nextPlayerState.activeBlessing = { type: 'FISHING_LUCK', turnsLeft: 2 }; 
+                      break;
+                  case ActionType.HOST_FESTIVAL:
+                      if(nextPlayerState.hasMetAelin) nextPlayerState.aelinFriendship += 10;
+                      if(nextPlayerState.hasMetKael) nextPlayerState.kaelFriendship += 10;
+                      if(nextPlayerState.hasMetElara) nextPlayerState.elaraFriendship += 10;
+                      break;
+                   case ActionType.ACCEPT_REQUEST:
+                      if (choice.requestGained) {
+                          nextPlayerState.activeRequests.push(choice.requestGained);
+                      }
+                      break;
+                   case ActionType.COMPLETE_REQUEST:
+                      if (choice.requestToCompleteId) {
+                          const request = nextPlayerState.activeRequests.find(r => r.id === choice.requestToCompleteId);
+                          if (request) {
+                              request.requiredItems.forEach(reqItem => {
+                                  for (let i = 0; i < reqItem.quantity; i++) {
+                                      const itemIndex = nextPlayerState.inventory.findIndex(invItem => invItem.name === reqItem.name);
+                                      if (itemIndex > -1) {
+                                          nextPlayerState.inventory.splice(itemIndex, 1);
+                                      }
+                                  }
+                              });
+                              if(request.reward.items) nextPlayerState.inventory.push(...request.reward.items);
+                              if(request.reward.friendship) {
+                                   if(request.npc === NPCName.Aelin) nextPlayerState.aelinFriendship += request.reward.friendship;
+                                   if(request.npc === NPCName.Kael) nextPlayerState.kaelFriendship += request.reward.friendship;
+                                   if(request.npc === NPCName.Elara) nextPlayerState.elaraFriendship += request.reward.friendship;
+                              }
+                              nextPlayerState.activeRequests = nextPlayerState.activeRequests.filter(r => r.id !== choice.requestToCompleteId);
+                          }
+                      }
+                      break;
+              }
+              
+              if (nextPlayerState.spirit <= 0) {
+                  setGameState(GameState.GAME_OVER);
+                  setPlayerState(nextPlayerState);
+                  setIsLoading(false);
+                  return;
+              }
+
+              setPlayerState(nextPlayerState);
+              
+              if (newEventNeeded) {
+                  await getNewEvent(newHistory, nextPlayerState);
+              } else {
+                   setIsLoading(false);
+              }
+
+          }, [playerState, isLoading, history, advanceDay, getNewEvent]);
+          
+           const handleTextInputSubmit = useCallback(async (text) => {
+              if (!playerState || isLoading || !text.trim()) return;
+
+              setIsLoading(true);
+              setErrorMessage('');
+              const newHistory = [...history, `> ${text}`];
+              setHistory(newHistory);
+
+              try {
+                  const choice = await generateChoiceFromInput(text, playerState);
+                  await handleChoice(choice);
+              } catch (error) {
+                  console.error(error);
+                  setErrorMessage(error instanceof Error ? error.message : "Đã xảy ra lỗi khi diễn giải hành động của bạn.");
+                  setIsLoading(false);
+              }
+          }, [playerState, isLoading, history, handleChoice]);
+
+          const onRestart = useCallback(() => {
+              setGameState(GameState.START_SCREEN);
+              setPlayerState(null);
+              setCurrentEvent(null);
+              setEventImage('');
+              setHistory([]);
+              setIsJournalOpen(false);
+              setIsQuestLogOpen(false);
+              setErrorMessage('');
+          }, []);
+
+          const mainContent = () => {
+              switch (gameState) {
+                  case GameState.START_SCREEN:
+                      return <StartScreen onStart={startGame} isLoading={isLoading} />;
+                  case GameState.GAME_OVER:
+                  case GameState.PLAYING:
+                       if (!playerState) {
+                          return <StartScreen onStart={startGame} isLoading={isLoading} />;
+                       }
+                       return (
+                           <div className="w-full flex flex-col items-center">
+                               <div className="w-full max-w-5xl">
+                                  <PlayerStats playerState={playerState} />
+                               </div>
+                               <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                  <div className="md:col-span-1 h-full">
+                                      <InventoryPanel inventory={playerState.inventory} />
+                                  </div>
+                                  <div className="md:col-span-2 h-full">
+                                     <FarmStatusPanel isFarmBuilt={playerState.isFarmBuilt} animals={playerState.farmAnimals} crops={playerState.plantedCrops} />
+                                  </div>
+                               </div>
+                               <div className="w-full max-w-4xl">
+                                   <GameScreen
+                                       event={currentEvent}
+                                       image={eventImage}
+                                       onChoice={handleChoice}
+                                       isLoading={isLoading}
+                                       isGameOver={gameState === GameState.GAME_OVER}
+                                       onRestart={onRestart}
+                                       onTextInputSubmit={handleTextInputSubmit}
+                                   />
+                               </div>
+                           </div>
+                       );
+                  default:
+                      return <StartScreen onStart={startGame} isLoading={isLoading} />;
+              }
+          };
+
+          return (
+              <div className="container mx-auto max-w-7xl p-4 min-h-screen flex flex-col items-center justify-start relative">
+                   <div className="fixed top-4 right-4 z-30 flex flex-col gap-3">
+                      <button
+                          onClick={() => setIsJournalOpen(true)}
+                          className="p-3 bg-forest-card/70 backdrop-blur-sm rounded-full shadow-lg text-curiosity-gold hover:text-white hover:bg-forest-card transition-all"
+                          aria-label="Mở Sổ Tay Khám Phá"
+                      >
+                          <JournalIcon />
+                      </button>
+                       <button
+                          onClick={() => setIsQuestLogOpen(true)}
+                          className="p-3 bg-forest-card/70 backdrop-blur-sm rounded-full shadow-lg text-green-400 hover:text-white hover:bg-forest-card transition-all"
+                          aria-label="Mở Sổ Ghi Chép Nhiệm Vụ"
+                      >
+                          <QuestIcon />
+                      </button>
+                  </div>
+                  {isJournalOpen && playerState && (
+                      <DiscoveryJournalPanel journal={playerState.discoveryJournal} onClose={() => setIsJournalOpen(false)} />
+                  )}
+                   {isQuestLogOpen && playerState && (
+                      <QuestLogPanel requests={playerState.activeRequests} onClose={() => setIsQuestLogOpen(false)} />
+                  )}
+                  <h1 className="text-4xl sm:text-5xl font-serif text-forest-header my-6 text-center">Thung Lũng An Yên</h1>
+                  <div className="w-full flex-grow flex items-center justify-center">
+                       {errorMessage ? <p className="text-red-400 text-center">{errorMessage}</p> : mainContent()}
+                  </div>
+              </div>
+          );
+      };
+      // ============== END: App.tsx ==============
+
+
+      // ============== START: Entry Point (from index.tsx) ==============
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
+      }
+
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+      // ============== END: Entry Point (from index.tsx) ==============
+    </script>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>
